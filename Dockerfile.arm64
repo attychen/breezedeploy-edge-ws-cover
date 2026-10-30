@@ -1,0 +1,14 @@
+# ARM64 variant of the cover+WS image, same recipe as the amd64 Dockerfile.
+# Original base edgerelay2610/edge-ws:latest is amd64-only (config architecture amd64, no arm64 manifest), so it cannot be built for linux/arm64.
+# This variant copies the arm64 xray binary and geo data from the official multi-arch ghcr.io/xtls/xray-core image (arm64 manifest verified) into Alpine, then adds the same Python cover and dual-entry entrypoint. No UUID/WSPATH baked in.
+FROM ghcr.io/xtls/xray-core:latest AS xray
+FROM alpine:latest
+COPY --from=xray /usr/local/bin/xray /usr/local/bin/xray
+COPY --from=xray /usr/local/share/xray /usr/local/share/xray
+RUN apk add --no-cache python3 wget ca-certificates
+COPY dual-entry.sh /dual-entry.sh
+COPY cover.py /cover.py
+RUN chmod +x /dual-entry.sh /cover.py /usr/local/bin/xray
+ENV PORT=8080 XRAY_LOCATION_ASSET=/usr/local/share/xray
+EXPOSE 8080
+ENTRYPOINT ["/dual-entry.sh"]
